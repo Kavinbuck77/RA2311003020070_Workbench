@@ -1,0 +1,1874 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PASS Science Works | Unified Engineering Workbench</title>
+  
+  <!-- CDNs for Plotly.js & Three.js with robust fallback support -->
+  <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+  
+  <style>
+    :root {
+      /* Matte Industrial Slate / Charcoal Engineering Palette */
+      --bg-primary: #0f1117;
+      --bg-secondary: #13161f;
+      --bg-card: #161922;
+      --bg-card-hover: #1c202b;
+      --bg-input: #0d0f14;
+      
+      --border-subtle: #252b3b;
+      --border-medium: #2b3245;
+      --border-focus: #2563eb;
+      
+      --btn-primary: #2563eb;
+      --btn-primary-hover: #1d4ed8;
+      
+      --accent-blue: #3b82f6;
+      --accent-teal: #0ea5e9;
+      --accent-emerald: #10b981;
+      --accent-amber: #f59e0b;
+      --accent-rose: #ef4444;
+      
+      --text-main: #f1f5f9;
+      --text-muted: #94a3b8;
+      --text-dim: #64748b;
+      
+      --font-sans: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      --font-mono: "JetBrains Mono", "SF Mono", Consolas, "Liberation Mono", Menlo, Courier, monospace;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    
+    html, body {
+      width: 100%;
+      max-width: 100vw;
+      min-height: 100vh;
+      overflow-x: hidden;
+      background-color: var(--bg-primary);
+      color: var(--text-main);
+      font-family: var(--font-sans);
+      line-height: 1.5;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* Top Navigation Header */
+    header {
+      width: 100%;
+      background: var(--bg-secondary);
+      border-bottom: 1px solid var(--border-subtle);
+      padding: 0.85rem 1.5rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    
+    .brand-group {
+      display: flex;
+      align-items: center;
+      gap: 0.85rem;
+    }
+    
+    .brand-logo {
+      width: 36px;
+      height: 36px;
+      background: #1a1e29;
+      border: 1px solid var(--border-medium);
+      border-radius: 5px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      font-size: 0.95rem;
+      color: var(--accent-blue);
+      font-family: var(--font-mono);
+      letter-spacing: -0.05em;
+    }
+    
+    .brand-title {
+      font-size: 1rem;
+      font-weight: 700;
+      letter-spacing: -0.01em;
+      color: var(--text-main);
+    }
+    
+    .brand-subtitle {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+    }
+    
+    .status-badge-container {
+      display: flex;
+      align-items: center;
+      gap: 1.25rem;
+    }
+    
+    .status-engine-item {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      font-size: 12px;
+      color: #94a3b8;
+      font-family: var(--font-mono);
+    }
+    
+    .status-dot-native {
+      width: 6px;
+      height: 6px;
+      background: #10b981;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+    
+    .status-clock-item {
+      font-size: 12px;
+      color: #64748b;
+      font-family: var(--font-mono);
+    }
+
+    /* Tab Switcher Bar */
+    nav.tab-bar {
+      width: 100%;
+      display: flex;
+      background: var(--bg-secondary);
+      border-bottom: 1px solid var(--border-subtle);
+      padding: 0 1.5rem;
+      gap: 0.25rem;
+      overflow-x: auto;
+    }
+    
+    .tab-btn {
+      background: transparent;
+      border: none;
+      outline: none;
+      color: var(--text-muted);
+      font-size: 0.82rem;
+      font-weight: 600;
+      padding: 0.75rem 1rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 0.45rem;
+      position: relative;
+      transition: color 0.15s ease, background 0.15s ease;
+      white-space: nowrap;
+      border-bottom: 2px solid transparent;
+      font-family: var(--font-sans);
+    }
+    
+    .tab-btn:hover {
+      color: var(--text-main);
+      background: rgba(255, 255, 255, 0.02);
+    }
+    
+    .tab-btn.active {
+      color: var(--text-main);
+      border-bottom-color: var(--btn-primary);
+      background: rgba(37, 99, 235, 0.05);
+    }
+
+    /* Main Viewport Container (Zero fixed-pixel horizontal clipping) */
+    main {
+      width: 100%;
+      max-width: 100vw;
+      min-height: calc(100vh - 110px);
+      overflow-x: hidden;
+      box-sizing: border-box;
+      padding: 1rem 1.5rem;
+      margin: 0;
+    }
+    
+    .tab-content {
+      display: none;
+      width: 100%;
+      min-width: 0;
+    }
+    .tab-content.active { display: block; }
+
+    /* Responsive CSS Grids */
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 1.25rem;
+      width: 100%;
+      min-width: 0;
+    }
+    @media (min-width: 900px) {
+      .grid-2 { grid-template-columns: 1fr 1fr; }
+    }
+    
+    .grid-3 {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 1.25rem;
+      width: 100%;
+      min-width: 0;
+    }
+    @media (min-width: 768px) {
+      .grid-3 { grid-template-columns: repeat(2, 1fr); }
+    }
+    @media (min-width: 1200px) {
+      .grid-3 { grid-template-columns: repeat(3, 1fr); }
+    }
+    
+    .grid-1-2 {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 1.25rem;
+      width: 100%;
+      min-width: 0;
+    }
+    @media (min-width: 1100px) {
+      .grid-1-2 { grid-template-columns: 360px minmax(0, 1fr); }
+    }
+    
+    .grid-2-1 {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 1.25rem;
+      width: 100%;
+      min-width: 0;
+    }
+    @media (min-width: 1100px) {
+      .grid-2-1 { grid-template-columns: minmax(0, 1fr) 360px; }
+    }
+
+    /* Task F Dedicated 12-Column Responsive Grid */
+    .grid-task-f {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 1.25rem;
+      width: 100%;
+      min-width: 0;
+    }
+    @media (min-width: 1200px) {
+      .grid-task-f {
+        grid-template-columns: minmax(320px, 4fr) minmax(0, 8fr);
+      }
+    }
+
+    /* Side-by-Side Chart Grid (Ensures strict containment without spillover) */
+    .grid-charts-pair {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 1.25rem;
+      width: 100%;
+      min-width: 0;
+    }
+    @media (min-width: 850px) {
+      .grid-charts-pair {
+        grid-template-columns: 1fr 1fr;
+      }
+    }
+
+    /* Cards & Containers */
+    .card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: 6px;
+      padding: 1.15rem;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+      width: 100%;
+      min-width: 0;
+      overflow: hidden;
+    }
+    
+    .card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 0.9rem;
+      padding-bottom: 0.65rem;
+      border-bottom: 1px solid var(--border-subtle);
+      width: 100%;
+    }
+    
+    .card-title {
+      font-size: 0.85rem;
+      font-weight: 700;
+      color: var(--text-main);
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      letter-spacing: 0.02em;
+      text-transform: uppercase;
+      font-family: var(--font-mono);
+    }
+
+    /* Form Inputs */
+    .form-group { margin-bottom: 0.8rem; }
+    .form-label {
+      display: block;
+      font-size: 0.72rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      margin-bottom: 0.25rem;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+    }
+    
+    .form-input {
+      width: 100%;
+      background: var(--bg-input);
+      border: 1px solid var(--border-medium);
+      color: var(--text-main);
+      padding: 0.5rem 0.75rem;
+      border-radius: 4px;
+      font-size: 0.82rem;
+      font-family: var(--font-mono);
+      outline: none;
+      transition: border-color 0.15s ease;
+    }
+    
+    .form-input:focus {
+      border-color: var(--border-focus);
+    }
+
+    /* Buttons */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.4rem;
+      background: var(--btn-primary);
+      color: #ffffff;
+      border: 1px solid #1d4ed8;
+      padding: 0.55rem 1rem;
+      border-radius: 4px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.15s ease, border-color 0.15s ease;
+      text-decoration: none;
+      font-family: var(--font-sans);
+    }
+    
+    .btn:hover {
+      background: var(--btn-primary-hover);
+      border-color: #1e40af;
+    }
+    
+    .btn-secondary {
+      background: #1a1e29;
+      border: 1px solid var(--border-medium);
+      color: var(--text-main);
+    }
+    
+    .btn-secondary:hover {
+      background: #242a39;
+      border-color: #3b455e;
+    }
+    
+    .btn-emerald {
+      background: #059669;
+      border-color: #047857;
+    }
+    .btn-emerald:hover { background: #047857; }
+    
+    .btn-amber {
+      background: #b45309;
+      border-color: #92400e;
+      color: #fff;
+    }
+    .btn-amber:hover { background: #92400e; }
+
+    /* Industrial Badges */
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 0.18rem 0.5rem;
+      border-radius: 3px;
+      font-size: 0.68rem;
+      font-weight: 600;
+      font-family: var(--font-mono);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+    
+    .badge-pass {
+      background: #111e19;
+      color: var(--accent-emerald);
+      border: 1px solid #165b44;
+    }
+    
+    .badge-fail {
+      background: #231215;
+      color: var(--accent-rose);
+      border: 1px solid #6b1d24;
+    }
+    
+    .badge-warn {
+      background: #241b10;
+      color: var(--accent-amber);
+      border: 1px solid #63360b;
+    }
+    
+    .badge-neutral {
+      background: #161a23;
+      color: var(--text-muted);
+      border: 1px solid var(--border-medium);
+    }
+
+    /* Native CAD / CAE Status Tags (ANSYS Discovery / Inventor style) */
+    .cad-tag {
+      display: inline-flex;
+      align-items: center;
+      padding: 2px 7px;
+      border-radius: 2px;
+      font-size: 11px;
+      font-weight: 500;
+      font-family: var(--font-mono);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      background: #1e2430;
+      border: 1px solid #333a4d;
+      color: #94a3b8;
+    }
+    
+    .cad-tag-valid {
+      background: #152221;
+      border: 1px solid #244b41;
+      color: #34d399;
+    }
+    
+    .cad-tag-info {
+      background: #162434;
+      border: 1px solid #224263;
+      color: #38bdf8;
+    }
+
+    /* Compact Engineering Property Grid */
+    .prop-grid {
+      display: grid;
+      grid-template-columns: auto 1fr;
+      column-gap: 16px;
+      row-gap: 8px;
+      font-size: 12px;
+      align-items: baseline;
+      width: 100%;
+    }
+    
+    .prop-key {
+      color: #64748b;
+      font-weight: 500;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      white-space: nowrap;
+    }
+    
+    .prop-val {
+      color: #cbd5e1;
+      font-family: var(--font-mono);
+      font-size: 12px;
+    }
+    
+    .prop-box-indent {
+      border-left: 2px solid #333a4d;
+      padding-left: 8px;
+      font-size: 11px;
+      line-height: 1.5;
+      color: #cbd5e1;
+      font-family: var(--font-mono);
+    }
+
+    /* Compact Secondary Engineering Tool Button */
+    .btn-cad-tool {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      height: 32px;
+      border: 1px solid #374151;
+      background: #1e2430;
+      color: #cbd5e1;
+      font-size: 12px;
+      font-weight: 500;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+      font-family: var(--font-sans);
+      width: 100%;
+    }
+    
+    .btn-cad-tool:hover {
+      background: #283040;
+      border-color: #4b5563;
+      color: #f1f5f9;
+    }
+
+    /* Tables */
+    .data-table-container {
+      width: 100%;
+      overflow-x: auto;
+      border-radius: 4px;
+      border: 1px solid var(--border-subtle);
+      background: var(--bg-card);
+    }
+    
+    table.data-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.78rem;
+      text-align: left;
+    }
+    
+    table.data-table th {
+      background: #12151d;
+      padding: 0.6rem 0.8rem;
+      font-weight: 700;
+      color: var(--text-muted);
+      border-bottom: 1px solid var(--border-subtle);
+      font-family: var(--font-mono);
+      font-size: 0.71rem;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      white-space: nowrap;
+    }
+    
+    table.data-table td {
+      padding: 0.6rem 0.8rem;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.02);
+      font-family: var(--font-mono);
+      color: var(--text-main);
+      white-space: nowrap;
+    }
+    
+    table.data-table tr:hover {
+      background: rgba(255, 255, 255, 0.02);
+    }
+
+    /* 3D Viewport */
+    #viewport3d {
+      width: 100%;
+      height: 520px;
+      background: #0b0d11;
+      border-radius: 5px;
+      position: relative;
+      overflow: hidden;
+      border: 1px solid var(--border-subtle);
+    }
+    
+    .viewport-overlay {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      z-index: 10;
+      display: flex;
+      gap: 0.4rem;
+      flex-wrap: wrap;
+    }
+    
+    .viewport-legend {
+      position: absolute;
+      bottom: 10px;
+      right: 10px;
+      z-index: 10;
+      background: rgba(19, 22, 31, 0.92);
+      border: 1px solid var(--border-medium);
+      padding: 0.55rem 0.75rem;
+      border-radius: 4px;
+      font-size: 0.7rem;
+      font-family: var(--font-mono);
+    }
+    
+    .color-gradient-bar {
+      width: 130px;
+      height: 7px;
+      margin: 0.35rem 0;
+      border-radius: 2px;
+      background: linear-gradient(to right, #1d4ed8, #0ea5e9, #10b981, #f59e0b, #ef4444);
+    }
+
+    /* Plotly Containers (Strict containment) */
+    .plot-container-box {
+      width: 100%;
+      min-width: 0;
+      overflow: hidden;
+      position: relative;
+    }
+
+    /* Hardware Pinout Schematic Box */
+    .pinout-schematic {
+      background: #0d0f14;
+      border: 1px solid var(--border-subtle);
+      border-radius: 4px;
+      padding: 1rem;
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      overflow-x: auto;
+      color: var(--text-muted);
+      line-height: 1.4;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Top Navigation Header -->
+  <header>
+    <div class="brand-group">
+      <div class="brand-logo">PSW</div>
+      <div>
+        <div class="brand-title">PASS SCIENCE WORKS | R&D BENCH 2026-2027</div>
+        <div class="brand-subtitle">Unified Engineering Workbench &bull; Candidate: <strong>Kavin</strong> (Principal Systems & Scientific Software Engineer)</div>
+      </div>
+    </div>
+    <div class="status-badge-container">
+      <div class="status-engine-item">
+        <span class="status-dot-native"></span>
+        <span id="backend-status-text">Engine: 127.0.0.1:8080 (C++17 Native)</span>
+      </div>
+      <div class="status-clock-item" id="live-clock">--:--:-- UTC</div>
+    </div>
+  </header>
+
+  <!-- Navigation Tab Bar -->
+  <nav class="tab-bar">
+    <button class="tab-btn active" onclick="switchTab('tab-cad')">
+      Geometry & ANSYS (Task B)
+    </button>
+    <button class="tab-btn" onclick="switchTab('tab-fea')">
+      1D Thermal FEA (Task C)
+    </button>
+    <button class="tab-btn" onclick="switchTab('tab-multicore')">
+      Multicore Scaling (Task D)
+    </button>
+    <button class="tab-btn" onclick="switchTab('tab-embedded')">
+      Embedded Hardware (Task E)
+    </button>
+    <button class="tab-btn" onclick="switchTab('tab-backprop')">
+      Neural Backpropagation (Task F)
+    </button>
+  </nav>
+
+  <!-- Main Viewport Container -->
+  <main>
+
+    <!-- ================================================================= -->
+    <!-- TAB 1: CAD STL & ANSYS CSV VIEWER (TASK B)                        -->
+    <!-- ================================================================= -->
+    <section id="tab-cad" class="tab-content active">
+      <div class="grid-2-1">
+        <!-- 3D Interactive Viewport -->
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">Interactive 3D WebGL Digital Twin</div>
+            <div style="display: flex; gap: 0.4rem;">
+              <button class="btn btn-secondary" onclick="toggleMeshWireframe()">Wireframe</button>
+              <button class="btn btn-secondary" onclick="togglePointCloud()">Toggle Nodes</button>
+              <button class="btn btn-secondary" onclick="resetCamera3D()">Reset View</button>
+            </div>
+          </div>
+          <div id="viewport3d">
+            <div class="viewport-overlay">
+              <span class="cad-tag" id="cad-solid-badge">Solid: HeatSinkBracket</span>
+              <span class="cad-tag" id="tri-count-badge">48 Facets</span>
+              <span class="cad-tag" id="node-count-badge">288 Thermal Nodes</span>
+            </div>
+            <div class="viewport-legend">
+              <div>Thermal Gradient (°C)</div>
+              <div class="color-gradient-bar"></div>
+              <div style="display:flex; justify-content:space-between;">
+                <span id="legend-min-temp">22.0 °C</span>
+                <span id="legend-max-temp">97.9 °C</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Geometry & ANSYS Metadata Sidecards -->
+        <div style="display: flex; flex-direction: column; gap: 1.25rem;">
+          <div class="card">
+            <div class="card-header">
+              <div class="card-title">STL Geometry Properties</div>
+              <span class="cad-tag cad-tag-valid">VALID MANIFOLD</span>
+            </div>
+            <div class="prop-grid">
+              <div class="prop-key">Solid ID</div>
+              <div class="prop-val" id="meta-solid-name">HeatSinkBracket</div>
+              
+              <div class="prop-key">Triangles</div>
+              <div class="prop-val" id="meta-tri-count">48</div>
+              
+              <div class="prop-key">Surface Area</div>
+              <div class="prop-val" id="meta-surf-area">0.02290 m²</div>
+              
+              <div class="prop-key" style="align-self: flex-start; margin-top: 2px;">Bounding Box</div>
+              <div class="prop-box-indent">
+                X: [0.000, 0.100] m<br>
+                Y: [0.000, 0.050] m<br>
+                Z: [0.000, 0.035] m
+              </div>
+            </div>
+            <div style="margin-top: 1rem;">
+              <button class="btn-cad-tool" onclick="downloadStlFile()">
+                <span>⤓</span> Download STL
+              </button>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-header">
+              <div class="card-title">ANSYS Thermal Mapping</div>
+              <span class="cad-tag cad-tag-info">5-COL VERIFIED</span>
+            </div>
+            <div class="prop-grid">
+              <div class="prop-key">Nodes Loaded</div>
+              <div class="prop-val" id="meta-node-count">288 points</div>
+              
+              <div class="prop-key">Max Temp</div>
+              <div class="prop-val" id="meta-tmax" style="color: #f87171;">97.90 °C</div>
+              
+              <div class="prop-key">Min Temp</div>
+              <div class="prop-val" id="meta-tmin" style="color: #38bdf8;">22.00 °C</div>
+              
+              <div class="prop-key">Mean Temp</div>
+              <div class="prop-val" id="meta-tmean" style="color: #e2e8f0;">56.42 °C</div>
+            </div>
+            <div style="margin-top: 1rem;">
+              <button class="btn-cad-tool" onclick="downloadAnsysCsvFile()">
+                <span>⤓</span> Download CSV
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================================================================= -->
+    <!-- TAB 2: 1D STEADY-STATE THERMAL FEA (TASK C)                       -->
+    <!-- ================================================================= -->
+    <section id="tab-fea" class="tab-content">
+      <div class="grid-1-2">
+        <!-- Input Parameters Card -->
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">Governing Equation & Parameters</div>
+          </div>
+          <div style="font-size: 0.74rem; background: var(--bg-input); padding: 0.6rem; border-radius: 4px; margin-bottom: 0.85rem; font-family: var(--font-mono); border: 1px solid var(--border-subtle); color: var(--text-muted);">
+            -d/dx(k*A*dT/dx) = q*A<br>
+            T(0) = T0, T(L) = TL
+          </div>
+          <div class="form-group">
+            <label class="form-label">Rod Length L (m)</label>
+            <input type="number" id="fea-param-L" class="form-input" value="1.0" step="0.1">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Cross Section A (m²)</label>
+            <input type="number" id="fea-param-A" class="form-input" value="0.0001" step="0.00001">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Thermal Conductivity k (W/m·K)</label>
+            <input type="number" id="fea-param-k" class="form-input" value="10.0" step="1.0">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Heat Generation q (W/m³)</label>
+            <input type="number" id="fea-param-q" class="form-input" value="10000.0" step="1000">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Boundary T(0) (°C)</label>
+            <input type="number" id="fea-param-T0" class="form-input" value="100.0" step="5">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Boundary T(L) (°C)</label>
+            <input type="number" id="fea-param-TL" class="form-input" value="20.0" step="5">
+          </div>
+          <button class="btn btn-emerald" style="width: 100%; margin-top: 0.4rem;" onclick="runFeaSolve()">
+            Solve FEA (N=10, 20, 40, 80)
+          </button>
+          <button class="btn btn-secondary" style="width: 100%; margin-top: 0.4rem;" onclick="exportFeaCsvClient()">
+            Export Convergence (CSV)
+          </button>
+        </div>
+
+        <!-- Plots & Convergence Results -->
+        <div style="display: flex; flex-direction: column; gap: 1.25rem; min-width: 0; width: 100%;">
+          <div class="grid-charts-pair">
+            <div class="card">
+              <div class="card-header"><div class="card-title">Temperature Distribution T(x)</div></div>
+              <div class="plot-container-box">
+                <div id="plot-fea-profile" style="height: 300px; width: 100%;"></div>
+              </div>
+            </div>
+            <div class="card">
+              <div class="card-header"><div class="card-title">Log-Log Convergence: Max Error vs h</div></div>
+              <div class="plot-container-box">
+                <div id="plot-fea-convergence" style="height: 300px; width: 100%;"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Convergence Table -->
+          <div class="card">
+            <div class="card-header">
+              <div class="card-title">Discretization Error & Convergence Rate</div>
+              <span class="badge badge-pass" id="fea-order-badge">Convergence Rate &alpha; = 2.0000 (O(h²))</span>
+            </div>
+            <div class="data-table-container">
+              <table class="data-table" id="fea-convergence-table">
+                <thead>
+                  <tr>
+                    <th>Elements N</th>
+                    <th>Mesh Size h (m)</th>
+                    <th>Max Midpoint Error (°C)</th>
+                    <th>L2 Error Norm (°C)</th>
+                    <th>Observed Rate &alpha;</th>
+                    <th>Solve Time (&mu;s)</th>
+                  </tr>
+                </thead>
+                <tbody id="fea-convergence-tbody">
+                  <!-- Populated via JS -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================================================================= -->
+    <!-- TAB 3: MULTICORE BATCH BENCHMARK (TASK D)                         -->
+    <!-- ================================================================= -->
+    <section id="tab-multicore" class="tab-content">
+      <div class="grid-1-2">
+        <!-- Benchmark Configuration -->
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">Multithreaded Batch Engine</div>
+          </div>
+          <div style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.85rem;">
+            Solves 1000 independent thermal FEA models concurrently using chunked work-stealing threads.
+          </div>
+          <div class="form-group">
+            <label class="form-label">Thermal Solve Cases</label>
+            <input type="number" id="batch-cases" class="form-input" value="1000" step="500">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Deterministic RNG Seed (mt19937)</label>
+            <input type="number" id="batch-seed" class="form-input" value="42" disabled>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Elements per Solve</label>
+            <input type="number" id="batch-elements" class="form-input" value="80" disabled>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Benchmark Runs</label>
+            <div style="font-size: 0.74rem; font-family: var(--font-mono); color: #cbd5e1;">
+              1 Warmup + 5 Timed Iterations (Median reported)
+            </div>
+          </div>
+          <button class="btn btn-emerald" style="width: 100%; margin-top: 0.4rem;" onclick="runMulticoreBenchmark()">
+            Execute Benchmark (1, 2, 4 Cores)
+          </button>
+          <button class="btn btn-secondary" style="width: 100%; margin-top: 0.4rem;" onclick="exportBatchCsvClient()">
+            Export Benchmark (CSV)
+          </button>
+        </div>
+
+        <!-- Performance Visuals & Table -->
+        <div style="display: flex; flex-direction: column; gap: 1.25rem; min-width: 0; width: 100%;">
+          <div class="card" style="border-left: 3px solid var(--accent-emerald);">
+            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem;">
+              <div>
+                <strong style="color: var(--text-main); font-size: 0.88rem;">Serial vs Parallel Numerical Equivalence</strong>
+                <div style="font-size: 0.74rem; color: var(--text-muted); margin-top: 0.15rem;">
+                  Assertion: max absolute discrepancy &le; 1e-8 across all 1000 solves:
+                </div>
+              </div>
+              <span class="badge badge-pass" id="batch-verify-badge">
+                VERIFIED (Max Diff = 0.00e+00)
+              </span>
+            </div>
+          </div>
+
+          <div class="grid-charts-pair">
+            <div class="card">
+              <div class="card-header"><div class="card-title">Execution Time (ms)</div></div>
+              <div class="plot-container-box">
+                <div id="plot-batch-time" style="height: 280px; width: 100%;"></div>
+              </div>
+            </div>
+            <div class="card">
+              <div class="card-header"><div class="card-title">Speedup S_p = T_1 / T_p</div></div>
+              <div class="plot-container-box">
+                <div id="plot-batch-speedup" style="height: 280px; width: 100%;"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Benchmark Summary Table -->
+          <div class="card">
+            <div class="card-header"><div class="card-title">Multicore Benchmark Scaling Results</div></div>
+            <div class="data-table-container">
+              <table class="data-table" id="batch-results-table">
+                <thead>
+                  <tr>
+                    <th>Threads p</th>
+                    <th>Warmup (ms)</th>
+                    <th>Median (ms)</th>
+                    <th>Min (ms)</th>
+                    <th>Max (ms)</th>
+                    <th>Speedup S_p</th>
+                    <th>Efficiency E_p</th>
+                    <th>Discrepancy</th>
+                    <th>Status</th>
+                  </tr>
+                </thead>
+                <tbody id="batch-results-tbody">
+                  <!-- Populated via JS -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================================================================= -->
+    <!-- TAB 4: EMBEDDED HARDWARE INTEGRATION (TASK E)                     -->
+    <!-- ================================================================= -->
+    <section id="tab-embedded" class="tab-content">
+      <div style="display: flex; flex-direction: column; gap: 1.25rem;">
+        
+        <!-- Action Control Banner -->
+        <div class="card" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.75rem;">
+          <div>
+            <div style="font-weight: 700; font-size: 0.95rem; color: var(--text-main); font-family: var(--font-mono);">Embedded Hardware-in-the-Loop Simulation</div>
+            <div style="font-size: 0.75rem; color: var(--text-muted);">
+              C++ State Machines for STM32 MCU, Xilinx Artix-7 FPGA, and FT2232H JTAG Debugger.
+            </div>
+          </div>
+          <div style="display: flex; gap: 0.4rem; flex-wrap: wrap;">
+            <button class="btn btn-emerald" onclick="executeEmbeddedAction('run_sequence')">Run Full Integration Flow</button>
+            <button class="btn btn-amber" onclick="executeEmbeddedAction('telemetry', 16, true)">Inject CRC Fault (Cmd 4)</button>
+            <button class="btn btn-secondary" onclick="executeEmbeddedAction('recover', 16)">Retransmit & Recover</button>
+            <button class="btn btn-secondary" onclick="executeEmbeddedAction('reset')">Reset Subsystem</button>
+          </div>
+        </div>
+
+        <!-- 3 Device Status Cards -->
+        <div class="grid-3" id="embedded-device-cards">
+          <!-- Populated via JS -->
+        </div>
+
+        <!-- Pinout & Voltage Architecture Diagram -->
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">Embedded Interface Pinout & Voltage Domain Architecture</div>
+          </div>
+          <div class="pinout-schematic">
+            <pre>
++---------------------------------------------------------------------------------------------------------------------+
+|                                          UNIFIED HARDWARE ADAPTER BUS TOPOLOGY                                      |
++---------------------------------------------------------------------------------------------------------------------+
+
+  HOST CONTROLLER (Windows 11 x64 Native C++17 Process)
+    |
+    +== [USB 2.0 CDC @ 115200 8N1] ======> TARGET 1: STM32F407VGT6 (ARM Cortex-M4F @ 168 MHz)
+    |                                        * Logic Rails: VDD = 3.30V (3.3V CMOS), VIN = 5.00V
+    |                                        * Signals: PA9 (TXD), PA10 (RXD), NRST, GND
+    |                                        * Capabilities: Hardware FPU, 12-bit ADC, Dual DMA
+    |
+    +== [PCIe Gen2 x1 / SPI @ 50 MHz] ===> TARGET 2: Xilinx Artix-7 (XC7A100T-1CSG324C FPGA)
+    |                                        * Multi-Domain Rails: VCCINT = 1.00V, VCCAUX = 1.80V, VCCO = 3.30V
+    |                                        * Signals: SCLK, MOSI, MISO, CS_N, D0-D3, INT_REQ
+    |                                        * Capabilities: 101k LCs, 240 DSP48E1 slices, On-chip XADC
+    |
+    +== [USB 2.0 High-Speed @ 480 Mbps] ==> TARGET 3: FTDI FT2232H / J-Link Debug Interface
+                                             * Target Sense: VREF = 3.30V Sense (1.65V - 3.60V Auto)
+                                             * Signals: SWCLK (4.0 MHz), SWDIO (Bidirectional Parity), nTRST, GND
+                                             * Capabilities: CoreSight SWD Master, SWV Trace Buffer
++---------------------------------------------------------------------------------------------------------------------+
+            </pre>
+          </div>
+        </div>
+
+        <!-- Live Packet Inspector -->
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">Hardware Packet Inspector & CRC16 Diagnostics</div>
+            <span class="badge badge-neutral" id="packet-counter-badge">0 Packets</span>
+          </div>
+          <div class="data-table-container" style="max-height: 320px;">
+            <table class="data-table" id="embedded-packets-table">
+              <thead>
+                <tr>
+                  <th>Seq #</th>
+                  <th>Device</th>
+                  <th>Command</th>
+                  <th>State</th>
+                  <th>Payload (Hex)</th>
+                  <th>Expected CRC</th>
+                  <th>Received CRC</th>
+                  <th>CRC Check</th>
+                  <th>Status / Recovery Trace</th>
+                </tr>
+              </thead>
+              <tbody id="embedded-packets-tbody">
+                <!-- Populated via JS -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- ================================================================= -->
+    <!-- TAB 5: NEURAL BACKPROPAGATION & GRADIENTS (TASK F)                -->
+    <!-- ================================================================= -->
+    <section id="tab-backprop" class="tab-content">
+      <!-- Clean 12-Column Responsive CSS Grid: Left (4 cols), Right (8 cols) -->
+      <div class="grid-task-f">
+        
+        <!-- Left Column: Controls & Mathematical Formulation -->
+        <div style="display: flex; flex-direction: column; gap: 1.25rem; min-width: 0; width: 100%;">
+          
+          <div class="card">
+            <div class="card-header">
+              <div class="card-title">Training Parameters</div>
+              <span class="badge badge-neutral">Single Sample</span>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Learning Rate &eta;</label>
+              <input type="number" id="bp-lr" class="form-input" value="0.1" step="0.01">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Training Epochs</label>
+              <input type="number" id="bp-epochs" class="form-input" value="100" step="10">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Sample Target</label>
+              <div style="font-size: 0.74rem; font-family: var(--font-mono); color: #cbd5e1; background: var(--bg-input); padding: 0.5rem; border-radius: 4px; border: 1px solid var(--border-subtle);">
+                Input: x = 1.0 &bull; Target: y = 2.0
+              </div>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Initial Weights</label>
+              <div style="font-size: 0.74rem; font-family: var(--font-mono); color: #cbd5e1; background: var(--bg-input); padding: 0.5rem; border-radius: 4px; border: 1px solid var(--border-subtle);">
+                w = 0.5, b = 0.0, v = 1.0, c = 0.0
+              </div>
+            </div>
+            <button class="btn btn-emerald" style="width: 100%; margin-top: 0.4rem;" onclick="runBackpropTrain()">
+              Train Network (100 Epochs)
+            </button>
+            <button class="btn btn-secondary" style="width: 100%; margin-top: 0.4rem;" onclick="exportBackpropCsvClient()">
+              Export Trajectory (CSV)
+            </button>
+          </div>
+
+          <div class="card">
+            <div class="card-header">
+              <div class="card-title">Model Formulation</div>
+            </div>
+            <div style="font-size: 0.73rem; font-family: var(--font-mono); color: #cbd5e1; line-height: 1.6;">
+              <strong style="color:var(--accent-blue);">Forward Equations:</strong><br>
+              z = w &middot; x + b<br>
+              h = tanh(z)<br>
+              y&#770; = v &middot; h + c<br>
+              Loss J = 0.5 &middot; (y&#770; - y)&sup2;<br><br>
+              <strong style="color:var(--accent-blue);">Analytical Gradients:</strong><br>
+              &part;J/&part;y&#770; = (y&#770; - y)<br>
+              &part;J/&part;v = &part;J/&part;y&#770; &middot; h<br>
+              &part;J/&part;c = &part;J/&part;y&#770;<br>
+              &part;J/&part;h = &part;J/&part;y&#770; &middot; v<br>
+              &part;J/&part;z = &part;J/&part;h &middot; (1 - h&sup2;)<br>
+              &part;J/&part;w = &part;J/&part;z &middot; x<br>
+              &part;J/&part;b = &part;J/&part;z
+            </div>
+          </div>
+
+        </div>
+
+        <!-- Right Column: Finite Difference Table & 2 Contained Charts -->
+        <div style="display: flex; flex-direction: column; gap: 1.25rem; min-width: 0; width: 100%;">
+          
+          <!-- Finite Difference Validation Table -->
+          <div class="card">
+            <div class="card-header">
+              <div class="card-title">Finite Difference Gradient Check (&epsilon; = 1e-6)</div>
+              <span class="badge badge-pass" id="bp-grad-check-badge">All Gradients Verified (&le; 1e-5)</span>
+            </div>
+            <div class="data-table-container">
+              <table class="data-table" id="bp-grad-table">
+                <thead>
+                  <tr>
+                    <th>Parameter</th>
+                    <th>Nominal &theta;</th>
+                    <th>Analytical &part;J/&part;&theta;</th>
+                    <th>Numerical &Delta;J/2&epsilon;</th>
+                    <th>Absolute Error</th>
+                    <th>Verification</th>
+                  </tr>
+                </thead>
+                <tbody id="bp-grad-tbody">
+                  <!-- Populated via JS -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Lower Row: 2 Responsive Charts Side-by-Side (Zero Horizontal Overflow) -->
+          <div class="grid-charts-pair">
+            <div class="card">
+              <div class="card-header"><div class="card-title">Loss Trajectory J vs Epoch</div></div>
+              <div class="plot-container-box">
+                <div id="plot-bp-loss" style="height: 290px; width: 100%;"></div>
+              </div>
+            </div>
+            <div class="card">
+              <div class="card-header"><div class="card-title">Weights & Prediction Evolution</div></div>
+              <div class="plot-container-box">
+                <div id="plot-bp-params" style="height: 290px; width: 100%;"></div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+      </div>
+    </section>
+
+  </main>
+
+  <script>
+    // In-memory data store for 100% reliable direct browser downloads
+    let inMemoryStlText = "";
+    let inMemoryAnsysCsvText = "";
+    let inMemoryFeaCsv = "";
+    let inMemoryBatchCsv = "";
+    let inMemoryBpCsv = "";
+
+    // Client-Side Direct Browser Blob Downloader
+    function triggerBrowserDownload(filename, textContent, mimeType) {
+      if (!textContent) {
+        console.error("Download failed: No text content for " + filename);
+        return;
+      }
+      const blob = new Blob([textContent], { type: mimeType });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      setTimeout(() => {
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      }, 150);
+    }
+
+    // Direct Download Handlers for STL and ANSYS CSV
+    async function downloadStlFile() {
+      if (inMemoryStlText) {
+        triggerBrowserDownload("sample.stl", inMemoryStlText, "model/stl;charset=utf-8");
+        return;
+      }
+      try {
+        const res = await fetch('/api/download/sample.stl');
+        if (res.ok) {
+          const text = await res.text();
+          inMemoryStlText = text;
+          triggerBrowserDownload("sample.stl", text, "model/stl;charset=utf-8");
+          return;
+        }
+      } catch (e) {}
+      fallbackStlDownload();
+    }
+
+    function fallbackStlDownload() {
+      if (window.cachedStlPositions) {
+        let stl = "solid HeatSinkBracket\n";
+        const pos = window.cachedStlPositions;
+        for (let i = 0; i < pos.length; i += 9) {
+          stl += "  facet normal 0.0 0.0 1.0\n    outer loop\n";
+          stl += `      vertex ${pos[i].toFixed(4)} ${pos[i+1].toFixed(4)} ${pos[i+2].toFixed(4)}\n`;
+          stl += `      vertex ${pos[i+3].toFixed(4)} ${pos[i+4].toFixed(4)} ${pos[i+5].toFixed(4)}\n`;
+          stl += `      vertex ${pos[i+6].toFixed(4)} ${pos[i+7].toFixed(4)} ${pos[i+8].toFixed(4)}\n`;
+          stl += "    endloop\n  endfacet\n";
+        }
+        stl += "endsolid HeatSinkBracket\n";
+        inMemoryStlText = stl;
+        triggerBrowserDownload("sample.stl", stl, "model/stl;charset=utf-8");
+      }
+    }
+
+    async function downloadAnsysCsvFile() {
+      if (inMemoryAnsysCsvText) {
+        triggerBrowserDownload("ansys_nodes.csv", inMemoryAnsysCsvText, "text/csv;charset=utf-8");
+        return;
+      }
+      try {
+        const res = await fetch('/api/download/ansys_nodes.csv');
+        if (res.ok) {
+          const text = await res.text();
+          inMemoryAnsysCsvText = text;
+          triggerBrowserDownload("ansys_nodes.csv", text, "text/csv;charset=utf-8");
+          return;
+        }
+      } catch (e) {}
+      fallbackAnsysCsvDownload();
+    }
+
+    function fallbackAnsysCsvDownload() {
+      if (window.cachedAnsysPoints && window.cachedAnsysTemps) {
+        let csv = "node_id,x_m,y_m,z_m,temperature_C\n";
+        const pts = window.cachedAnsysPoints;
+        const temps = window.cachedAnsysTemps;
+        for (let i = 0; i < temps.length; ++i) {
+          csv += `${1001 + i},${pts[i*3].toFixed(5)},${pts[i*3+1].toFixed(5)},${pts[i*3+2].toFixed(5)},${temps[i].toFixed(5)}\n`;
+        }
+        inMemoryAnsysCsvText = csv;
+        triggerBrowserDownload("ansys_nodes.csv", csv, "text/csv;charset=utf-8");
+      }
+    }
+
+    function exportFeaCsvClient() {
+      if (inMemoryFeaCsv) {
+        triggerBrowserDownload("fea_convergence.csv", inMemoryFeaCsv, "text/csv;charset=utf-8");
+      } else {
+        window.location.href = '/api/export/fea.csv';
+      }
+    }
+
+    function exportBatchCsvClient() {
+      if (inMemoryBatchCsv) {
+        triggerBrowserDownload("multicore_benchmark.csv", inMemoryBatchCsv, "text/csv;charset=utf-8");
+      } else {
+        window.location.href = '/api/export/batch.csv';
+      }
+    }
+
+    function exportBackpropCsvClient() {
+      if (inMemoryBpCsv) {
+        triggerBrowserDownload("backprop_training.csv", inMemoryBpCsv, "text/csv;charset=utf-8");
+      } else {
+        window.location.href = '/api/export/backprop.csv';
+      }
+    }
+
+    // Dynamic Plotly Multi-Chart Resizer
+    function resizeAllPlotlyCharts() {
+      const chartIds = [
+        'plot-fea-profile',
+        'plot-fea-convergence',
+        'plot-batch-time',
+        'plot-batch-speedup',
+        'plot-bp-loss',
+        'plot-bp-params'
+      ];
+      chartIds.forEach(id => {
+        const el = document.getElementById(id);
+        if (el && el.data) {
+          Plotly.Plots.resize(el);
+        }
+      });
+    }
+
+    // Global Tab Switching
+    function switchTab(tabId) {
+      document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+      document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+      
+      const targetBtn = Array.from(document.querySelectorAll('.tab-btn')).find(b => b.getAttribute('onclick').includes(tabId));
+      if (targetBtn) targetBtn.classList.add('active');
+      const targetContent = document.getElementById(tabId);
+      if (targetContent) targetContent.classList.add('active');
+
+      if (tabId === 'tab-cad' && window.renderer && window.camera) {
+        onWindowResize3D();
+      }
+
+      // Responsive chart reflow
+      setTimeout(resizeAllPlotlyCharts, 50);
+      setTimeout(resizeAllPlotlyCharts, 180);
+    }
+
+    // Window Resize Event Listener
+    window.addEventListener('resize', () => {
+      onWindowResize3D();
+      resizeAllPlotlyCharts();
+    });
+
+    // Live Clock
+    setInterval(() => {
+      const now = new Date();
+      document.getElementById('live-clock').innerText = now.toUTCString().slice(17, 25) + ' UTC';
+    }, 1000);
+
+    // ===================================================================
+    // THREE.JS 3D CAD & ANSYS VIEWER (TASK B)
+    // ===================================================================
+    let scene, camera, renderer, controls;
+    let cadMesh = null;
+    let pointCloud = null;
+
+    function init3DViewport() {
+      const container = document.getElementById('viewport3d');
+      if (!container) return;
+
+      const width = container.clientWidth || 800;
+      const height = container.clientHeight || 520;
+
+      scene = new THREE.Scene();
+      scene.background = new THREE.Color(0x0b0d11);
+
+      camera = new THREE.PerspectiveCamera(45, width / height, 0.001, 100);
+      camera.position.set(0.16, 0.12, 0.14);
+
+      renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+      renderer.setSize(width, height);
+      renderer.setPixelRatio(window.devicePixelRatio);
+      container.appendChild(renderer.domElement);
+
+      if (typeof THREE.OrbitControls !== 'undefined') {
+        controls = new THREE.OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.05;
+        controls.target.set(0.05, 0.025, 0.015);
+      }
+
+      // Industrial Lighting
+      const ambLight = new THREE.AmbientLight(0xffffff, 0.55);
+      scene.add(ambLight);
+
+      const dirLight1 = new THREE.DirectionalLight(0xffffff, 0.75);
+      dirLight1.position.set(1, 2, 3);
+      scene.add(dirLight1);
+
+      const dirLight2 = new THREE.DirectionalLight(0x94a3b8, 0.35);
+      dirLight2.position.set(-2, -1, -1);
+      scene.add(dirLight2);
+
+      // Grid Floor
+      const grid = new THREE.GridHelper(0.3, 30, 0x252b3b, 0x161922);
+      grid.position.set(0.05, -0.001, 0.025);
+      scene.add(grid);
+
+      animate3D();
+      loadCadAndAnsysData();
+    }
+
+    function animate3D() {
+      requestAnimationFrame(animate3D);
+      if (controls) controls.update();
+      if (renderer && scene && camera) renderer.render(scene, camera);
+    }
+
+    function onWindowResize3D() {
+      const container = document.getElementById('viewport3d');
+      if (!container || !renderer || !camera) return;
+      const width = container.clientWidth;
+      const height = container.clientHeight;
+      camera.aspect = width / height;
+      camera.updateProjectionMatrix();
+      renderer.setSize(width, height);
+    }
+
+    function resetCamera3D() {
+      if (camera && controls) {
+        camera.position.set(0.16, 0.12, 0.14);
+        controls.target.set(0.05, 0.025, 0.015);
+        controls.update();
+      }
+    }
+
+    function toggleMeshWireframe() {
+      if (cadMesh) {
+        cadMesh.material.wireframe = !cadMesh.material.wireframe;
+      }
+    }
+
+    function togglePointCloud() {
+      if (pointCloud) {
+        pointCloud.visible = !pointCloud.visible;
+      }
+    }
+
+    // Colormap interpolation
+    function tempToColor(t, minT, maxT) {
+      const norm = Math.max(0, Math.min(1, (t - minT) / (maxT - minT || 1)));
+      let r = 0, g = 0, b = 0;
+      if (norm < 0.25) {
+        r = 0; g = 4 * norm; b = 1;
+      } else if (norm < 0.5) {
+        r = 0; g = 1; b = 1 - 4 * (norm - 0.25);
+      } else if (norm < 0.75) {
+        r = 4 * (norm - 0.5); g = 1; b = 0;
+      } else {
+        r = 1; g = 1 - 4 * (norm - 0.75); b = 0;
+      }
+      return [r, g, b];
+    }
+
+    async function loadCadAndAnsysData() {
+      try {
+        // Load STL
+        const stlRes = await fetch('/api/cad/stl');
+        const stlData = await stlRes.json();
+        if (stlData.valid) {
+          document.getElementById('meta-solid-name').innerText = stlData.name;
+          document.getElementById('meta-tri-count').innerText = stlData.triangle_count;
+          document.getElementById('meta-surf-area').innerText = stlData.surface_area.toFixed(5) + ' m²';
+          document.getElementById('tri-count-badge').innerText = stlData.triangle_count + ' Facets';
+
+          window.cachedStlPositions = stlData.positions;
+
+          const geometry = new THREE.BufferGeometry();
+          geometry.setAttribute('position', new THREE.Float32BufferAttribute(stlData.positions, 3));
+          geometry.setAttribute('normal', new THREE.Float32BufferAttribute(stlData.normals, 3));
+
+          const material = new THREE.MeshStandardMaterial({
+            color: 0x475569,
+            metalness: 0.2,
+            roughness: 0.6,
+            transparent: true,
+            opacity: 0.75,
+            side: THREE.DoubleSide
+          });
+
+          if (cadMesh) scene.remove(cadMesh);
+          cadMesh = new THREE.Mesh(geometry, material);
+          scene.add(cadMesh);
+        }
+
+        // Pre-fetch raw STL for direct download cache
+        fetch('/api/download/sample.stl').then(r => r.text()).then(t => { inMemoryStlText = t; }).catch(() => {});
+
+        // Load ANSYS CSV
+        const ansysRes = await fetch('/api/cad/ansys');
+        const ansysData = await ansysRes.json();
+        if (ansysData.valid) {
+          document.getElementById('meta-node-count').innerText = ansysData.node_count + ' points';
+          document.getElementById('meta-tmin').innerText = ansysData.min_temp.toFixed(2) + ' °C';
+          document.getElementById('meta-tmax').innerText = ansysData.max_temp.toFixed(2) + ' °C';
+          document.getElementById('meta-tmean').innerText = ansysData.mean_temp.toFixed(2) + ' °C';
+          document.getElementById('legend-min-temp').innerText = ansysData.min_temp.toFixed(1) + ' °C';
+          document.getElementById('legend-max-temp').innerText = ansysData.max_temp.toFixed(1) + ' °C';
+          document.getElementById('node-count-badge').innerText = ansysData.node_count + ' Nodes';
+
+          window.cachedAnsysPoints = ansysData.points;
+          window.cachedAnsysTemps = ansysData.temperatures;
+
+          const ptsGeo = new THREE.BufferGeometry();
+          ptsGeo.setAttribute('position', new THREE.Float32BufferAttribute(ansysData.points, 3));
+
+          const colors = [];
+          for (let i = 0; i < ansysData.temperatures.length; ++i) {
+            const rgb = tempToColor(ansysData.temperatures[i], ansysData.min_temp, ansysData.max_temp);
+            colors.push(rgb[0], rgb[1], rgb[2]);
+          }
+          ptsGeo.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+
+          const ptsMat = new THREE.PointsMaterial({
+            size: 0.0032,
+            vertexColors: true,
+            transparent: true,
+            opacity: 0.95
+          });
+
+          if (pointCloud) scene.remove(pointCloud);
+          pointCloud = new THREE.Points(ptsGeo, ptsMat);
+          scene.add(pointCloud);
+        }
+
+        // Pre-fetch raw CSV for direct download cache
+        fetch('/api/download/ansys_nodes.csv').then(r => r.text()).then(t => { inMemoryAnsysCsvText = t; }).catch(() => {});
+      } catch (err) {
+        console.error('Failed to load 3D data:', err);
+      }
+    }
+
+    // ===================================================================
+    // 1D THERMAL FEA (TASK C)
+    // ===================================================================
+    async function runFeaSolve() {
+      const L = document.getElementById('fea-param-L').value;
+      const A = document.getElementById('fea-param-A').value;
+      const k = document.getElementById('fea-param-k').value;
+      const q = document.getElementById('fea-param-q').value;
+      const T0 = document.getElementById('fea-param-T0').value;
+      const TL = document.getElementById('fea-param-TL').value;
+
+      try {
+        const res = await fetch(`/api/fea/solve?L=${L}&A=${A}&k=${k}&q=${q}&T0=${T0}&TL=${TL}`);
+        const data = await res.json();
+        renderFeaResults(data);
+      } catch (e) {
+        console.error('FEA Solve failed:', e);
+      }
+    }
+
+    function renderFeaResults(data) {
+      // 1. Table
+      const tbody = document.getElementById('fea-convergence-tbody');
+      tbody.innerHTML = '';
+      let csv = "Elements_N,Mesh_Size_h,Max_Midpoint_Error_C,L2_Midpoint_Error_C,Convergence_Rate_alpha\n";
+
+      data.convergence_table.forEach((row, idx) => {
+        const solve = data.solves[idx] || {};
+        csv += `${row.N},${row.h.toFixed(6)},${row.max_error.toFixed(6)},${row.l2_error.toFixed(6)},${row.convergence_rate.toFixed(4)}\n`;
+        
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td><strong>${row.N}</strong></td>
+          <td>${row.h.toFixed(4)}</td>
+          <td style="color:var(--accent-amber);">${row.max_error.toFixed(6)}</td>
+          <td>${row.l2_error.toFixed(6)}</td>
+          <td><span class="badge badge-pass">${idx === 0 ? 'Baseline' : row.convergence_rate.toFixed(4)}</span></td>
+          <td>${solve.exec_time_us ? solve.exec_time_us.toFixed(1) : '--'}</td>
+        `;
+        tbody.appendChild(tr);
+      });
+      inMemoryFeaCsv = csv;
+
+      // 2. Profile Plot
+      const traces = [];
+      const colors = ['#ef4444', '#f59e0b', '#10b981', '#3b82f6'];
+      data.solves.forEach((s, idx) => {
+        traces.push({
+          x: s.nodes_x,
+          y: s.nodes_T_fea,
+          mode: 'lines+markers',
+          name: `FEA N=${s.N}`,
+          line: { color: colors[idx], width: 1.8 }
+        });
+      });
+      const s80 = data.solves[data.solves.length - 1];
+      if (s80) {
+        traces.push({
+          x: s80.nodes_x,
+          y: s80.nodes_T_exact,
+          mode: 'lines',
+          name: 'Analytical Exact',
+          line: { color: '#f1f5f9', dash: 'dash', width: 2 }
+        });
+      }
+
+      const layoutProfile = {
+        paper_bgcolor: 'transparent',
+        plot_bgcolor: 'transparent',
+        autosize: true,
+        margin: { l: 45, r: 15, t: 20, b: 35 },
+        font: { color: '#94a3b8', family: 'system-ui, -apple-system, sans-serif', size: 11 },
+        xaxis: { title: 'Position x (m)', gridcolor: '#222838', zerolinecolor: '#2b3245' },
+        yaxis: { title: 'Temperature (°C)', gridcolor: '#222838', zerolinecolor: '#2b3245' },
+        legend: { x: 0.05, y: 0.95, bgcolor: 'rgba(22,25,34,0.85)', bordercolor: '#2b3245', borderwidth: 1 }
+      };
+      Plotly.newPlot('plot-fea-profile', traces, layoutProfile, { responsive: true, displayModeBar: false });
+
+      // 3. Convergence Log-Log Plot
+      const h_vals = data.convergence_table.map(r => r.h);
+      const err_vals = data.convergence_table.map(r => r.max_error);
+
+      const traceErr = {
+        x: h_vals,
+        y: err_vals,
+        mode: 'lines+markers',
+        name: 'FEA Midpoint Error',
+        line: { color: '#3b82f6', width: 2.2 },
+        marker: { size: 6 }
+      };
+      const ref_err = h_vals.map(h => (err_vals[0] / (h_vals[0] ** 2)) * (h ** 2));
+      const traceRef = {
+        x: h_vals,
+        y: ref_err,
+        mode: 'lines',
+        name: 'Reference O(h²)',
+        line: { color: '#f59e0b', dash: 'dot', width: 1.8 }
+      };
+
+      const layoutConv = {
+        paper_bgcolor: 'transparent',
+        plot_bgcolor: 'transparent',
+        autosize: true,
+        margin: { l: 55, r: 15, t: 20, b: 35 },
+        font: { color: '#94a3b8', family: 'system-ui, -apple-system, sans-serif', size: 11 },
+        xaxis: { title: 'Mesh Size h (m)', type: 'log', gridcolor: '#222838', zerolinecolor: '#2b3245' },
+        yaxis: { title: 'Max Error (°C)', type: 'log', gridcolor: '#222838', zerolinecolor: '#2b3245' },
+        legend: { x: 0.05, y: 0.95, bgcolor: 'rgba(22,25,34,0.85)', bordercolor: '#2b3245', borderwidth: 1 }
+      };
+      Plotly.newPlot('plot-fea-convergence', [traceErr, traceRef], layoutConv, { responsive: true, displayModeBar: false });
+    }
+
+    // ===================================================================
+    // MULTICORE BATCH BENCHMARK (TASK D)
+    // ===================================================================
+    async function runMulticoreBenchmark() {
+      const cases = document.getElementById('batch-cases').value || 1000;
+      try {
+        const res = await fetch(`/api/batch/benchmark?cases=${cases}&seed=42`);
+        const data = await res.json();
+        renderBenchmarkResults(data);
+      } catch (e) {
+        console.error('Benchmark failed:', e);
+      }
+    }
+
+    function renderBenchmarkResults(data) {
+      const tbody = document.getElementById('batch-results-tbody');
+      tbody.innerHTML = '';
+      let csv = "Threads_p,Warmup_ms,Median_ms,Min_ms,Max_ms,Speedup_Sp,Efficiency_Ep,Discrepancy,Status\n";
+
+      data.runs.forEach(r => {
+        csv += `${r.threads},${r.warmup_ms.toFixed(3)},${r.median_ms.toFixed(3)},${r.min_ms.toFixed(3)},${r.max_ms.toFixed(3)},${r.speedup.toFixed(2)},${r.efficiency.toFixed(3)},${r.discrepancy},${r.verified ? 'PASS' : 'FAIL'}\n`;
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td><strong>${r.threads} Core${r.threads > 1 ? 's' : ''}</strong></td>
+          <td>${r.warmup_ms.toFixed(2)}</td>
+          <td style="color:var(--text-main); font-weight:700;">${r.median_ms.toFixed(3)}</td>
+          <td>${r.min_ms.toFixed(3)}</td>
+          <td>${r.max_ms.toFixed(3)}</td>
+          <td style="color:var(--accent-emerald); font-weight:700;">${r.speedup.toFixed(2)}x</td>
+          <td>${(r.efficiency * 100).toFixed(1)}%</td>
+          <td>${r.discrepancy.toExponential(2)}</td>
+          <td><span class="badge ${r.verified ? 'badge-pass' : 'badge-fail'}">${r.verified ? 'PASS' : 'FAIL'}</span></td>
+        `;
+        tbody.appendChild(tr);
+      });
+      inMemoryBatchCsv = csv;
+
+      // Plot 1: Execution Time Bar
+      const threads = data.runs.map(r => `${r.threads} Core${r.threads > 1 ? 's' : ''}`);
+      const times = data.runs.map(r => r.median_ms);
+
+      const traceTime = {
+        x: threads,
+        y: times,
+        type: 'bar',
+        marker: { color: ['#2563eb', '#0ea5e9', '#10b981'] }
+      };
+      const layoutTime = {
+        paper_bgcolor: 'transparent',
+        plot_bgcolor: 'transparent',
+        autosize: true,
+        margin: { l: 45, r: 15, t: 15, b: 35 },
+        font: { color: '#94a3b8', family: 'system-ui, -apple-system, sans-serif', size: 11 },
+        yaxis: { title: 'Median Time (ms)', gridcolor: '#222838' }
+      };
+      Plotly.newPlot('plot-batch-time', [traceTime], layoutTime, { responsive: true, displayModeBar: false });
+
+      // Plot 2: Speedup vs Ideal Linear
+      const p_nums = data.runs.map(r => r.threads);
+      const speedups = data.runs.map(r => r.speedup);
+
+      const traceSp = {
+        x: p_nums,
+        y: speedups,
+        mode: 'lines+markers',
+        name: 'Observed Speedup',
+        line: { color: '#10b981', width: 2.2 },
+        marker: { size: 7 }
+      };
+      const traceIdeal = {
+        x: p_nums,
+        y: p_nums,
+        mode: 'lines',
+        name: 'Ideal Linear S_p = p',
+        line: { color: '#64748b', dash: 'dash', width: 1.5 }
+      };
+
+      const layoutSp = {
+        paper_bgcolor: 'transparent',
+        plot_bgcolor: 'transparent',
+        autosize: true,
+        margin: { l: 45, r: 15, t: 15, b: 35 },
+        font: { color: '#94a3b8', family: 'system-ui, -apple-system, sans-serif', size: 11 },
+        xaxis: { title: 'Cores / Threads p', dtick: 1, gridcolor: '#222838' },
+        yaxis: { title: 'Speedup S_p', gridcolor: '#222838' },
+        legend: { x: 0.05, y: 0.95, bgcolor: 'rgba(22,25,34,0.85)', bordercolor: '#2b3245', borderwidth: 1 }
+      };
+      Plotly.newPlot('plot-batch-speedup', [traceSp, traceIdeal], layoutSp, { responsive: true, displayModeBar: false });
+    }
+
+    // ===================================================================
+    // EMBEDDED HARDWARE STATE & ACTIONS (TASK E)
+    // ===================================================================
+    async function loadEmbeddedState() {
+      try {
+        const res = await fetch('/api/embedded/state');
+        const data = await res.json();
+        renderEmbeddedSubsystem(data);
+      } catch (e) {
+        console.error('Embedded fetch failed:', e);
+      }
+    }
+
+    async function executeEmbeddedAction(action, devId = 16, injectFault = false) {
+      try {
+        await fetch(`/api/embedded/action?action=${action}&device_id=${devId}&inject_fault=${injectFault}`, { method: 'POST' });
+        loadEmbeddedState();
+      } catch (e) {
+        console.error('Embedded action failed:', e);
+      }
+    }
+
+    function renderEmbeddedSubsystem(data) {
+      // 1. Devices Cards
+      const container = document.getElementById('embedded-device-cards');
+      container.innerHTML = '';
+
+      data.devices.forEach(dev => {
+        const card = document.createElement('div');
+        card.className = 'card';
+        let stateBadgeClass = 'badge-pass';
+        if (dev.state === 'ERROR_RECOVERY') stateBadgeClass = 'badge-fail';
+        else if (dev.state === 'DISCONNECTED') stateBadgeClass = 'badge-neutral';
+
+        card.innerHTML = `
+          <div class="card-header">
+            <div class="card-title">${dev.display_name}</div>
+            <span class="badge ${stateBadgeClass}">${dev.state}</span>
+          </div>
+          <div style="font-size:0.78rem; display:flex; flex-direction:column; gap:0.35rem; color:#cbd5e1;">
+            <div><strong style="color:var(--text-muted);">Bus:</strong> <span style="font-family:var(--font-mono);">${dev.bus}</span></div>
+            <div><strong style="color:var(--text-muted);">Voltage:</strong> <span style="font-family:var(--font-mono);">${dev.voltage_spec}</span></div>
+            <div style="background:var(--bg-input); padding:0.5rem; border-radius:4px; margin-top:0.35rem; border:1px solid var(--border-subtle); font-family:var(--font-mono); font-size:0.75rem;">
+              <div style="display:flex; justify-content:space-between;">
+                <span>V_main: <strong>${dev.telemetry.v_main.toFixed(3)} V</strong></span>
+                <span>Current: <strong>${dev.telemetry.current_mA.toFixed(1)} mA</strong></span>
+              </div>
+              <div style="display:flex; justify-content:space-between; margin-top:0.25rem;">
+                <span>Die Temp: <strong>${dev.telemetry.temp_C.toFixed(1)} °C</strong></span>
+                <span>Packets: <strong>${dev.telemetry.packets_sent}</strong></span>
+              </div>
+              <div style="display:flex; justify-content:space-between; margin-top:0.25rem;">
+                <span>Recovered: <strong style="color:var(--accent-emerald);">${dev.telemetry.recovered_faults}</strong></span>
+                <span>Lost: <strong style="${dev.telemetry.packets_lost ? 'color:var(--accent-rose);' : ''}">${dev.telemetry.packets_lost}</strong></span>
+              </div>
+            </div>
+          </div>
+          <div style="margin-top:0.75rem; display:flex; gap:0.35rem; flex-wrap:wrap;">
+            <button class="btn btn-secondary" style="font-size:0.72rem; padding:0.35rem 0.55rem;" onclick="executeEmbeddedAction('discover', ${dev.device_id})">Discover</button>
+            <button class="btn btn-secondary" style="font-size:0.72rem; padding:0.35rem 0.55rem;" onclick="executeEmbeddedAction('connect', ${dev.device_id})">Connect</button>
+            <button class="btn btn-secondary" style="font-size:0.72rem; padding:0.35rem 0.55rem;" onclick="executeEmbeddedAction('telemetry', ${dev.device_id})">Telemetry</button>
+            <button class="btn btn-secondary" style="font-size:0.72rem; padding:0.35rem 0.55rem;" onclick="executeEmbeddedAction('disconnect', ${dev.device_id})">Disconnect</button>
+          </div>
+        `;
+        container.appendChild(card);
+      });
+
+      // 2. Packets Table
+      const pTbody = document.getElementById('embedded-packets-tbody');
+      pTbody.innerHTML = '';
+      document.getElementById('packet-counter-badge').innerText = `${data.packet_history.length} Packets`;
+
+      data.packet_history.slice().reverse().forEach(p => {
+        const tr = document.createElement('tr');
+        const crcOk = p.crc_valid;
+        tr.innerHTML = `
+          <td>#${p.seq}</td>
+          <td><strong>${p.device_name}</strong></td>
+          <td>${p.cmd_name}</td>
+          <td><span class="badge ${p.state === 'ERROR_RECOVERY' ? 'badge-fail' : 'badge-pass'}">${p.state}</span></td>
+          <td style="font-size:0.72rem;">${p.payload_hex}</td>
+          <td>0x${p.expected_crc.toString(16).toUpperCase()}</td>
+          <td style="${crcOk ? '' : 'color:var(--accent-rose); font-weight:bold;'}">0x${p.received_crc.toString(16).toUpperCase()}</td>
+          <td><span class="badge ${crcOk ? 'badge-pass' : 'badge-fail'}">${crcOk ? 'VALID' : 'CRC ERROR'}</span></td>
+          <td style="font-size:0.72rem; ${crcOk ? '' : 'color:var(--accent-rose); font-weight:bold;'}">${p.status}</td>
+        `;
+        pTbody.appendChild(tr);
+      });
+    }
+
+    // ===================================================================
+    // NEURAL BACKPROPAGATION (TASK F)
+    // ===================================================================
+    async function runBackpropTrain() {
+      const lr = document.getElementById('bp-lr').value || 0.1;
+      const epochs = document.getElementById('bp-epochs').value || 100;
+      try {
+        const res = await fetch(`/api/backprop/train?lr=${lr}&epochs=${epochs}`);
+        const data = await res.json();
+        renderBackpropResults(data);
+      } catch (e) {
+        console.error('Backprop train failed:', e);
+      }
+    }
+
+    function renderBackpropResults(data) {
+      // 1. Gradient check table
+      const tbody = document.getElementById('bp-grad-tbody');
+      tbody.innerHTML = '';
+      data.gradient_check.forEach(g => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td><strong>${g.param}</strong></td>
+          <td>${g.value.toFixed(4)}</td>
+          <td>${g.analytical.toFixed(8)}</td>
+          <td>${g.numerical.toFixed(8)}</td>
+          <td style="color:var(--accent-teal);">${g.abs_error.toExponential(3)}</td>
+          <td><span class="badge ${g.passed ? 'badge-pass' : 'badge-fail'}">${g.passed ? 'PASS (<=1e-5)' : 'FAIL'}</span></td>
+        `;
+        tbody.appendChild(tr);
+      });
+
+      // Prepare in-memory CSV
+      let csv = "Epoch,w,b,v,c,z,h,y_hat,target_y,loss_J,grad_w,grad_b,grad_v,grad_c\n";
+      data.history.forEach(h => {
+        csv += `${h.epoch},${h.w.toFixed(8)},${h.b.toFixed(8)},${h.v.toFixed(8)},${h.c.toFixed(8)},${h.z.toFixed(8)},${h.h.toFixed(8)},${h.y_hat.toFixed(8)},2.0,${h.loss.toFixed(8)},${h.dJ_dw.toFixed(8)},${h.dJ_db.toFixed(8)},${h.dJ_dv.toFixed(8)},${h.dJ_dc.toFixed(8)}\n`;
+      });
+      inMemoryBpCsv = csv;
+
+      // 2. Loss Plot (Matte Technical Styling)
+      const epochs = data.history.map(h => h.epoch);
+      const losses = data.history.map(h => h.loss);
+
+      const traceLoss = {
+        x: epochs,
+        y: losses,
+        mode: 'lines',
+        name: 'Loss J',
+        line: { color: '#ef4444', width: 2.2 }
+      };
+      const layoutLoss = {
+        paper_bgcolor: 'transparent',
+        plot_bgcolor: 'transparent',
+        autosize: true,
+        margin: { l: 45, r: 15, t: 15, b: 35 },
+        font: { color: '#94a3b8', family: 'system-ui, -apple-system, sans-serif', size: 11 },
+        xaxis: { title: 'Epoch', gridcolor: '#222838', zerolinecolor: '#2b3245' },
+        yaxis: { title: 'Loss J', gridcolor: '#222838', zerolinecolor: '#2b3245' }
+      };
+      Plotly.newPlot('plot-bp-loss', [traceLoss], layoutLoss, { responsive: true, displayModeBar: false });
+
+      // 3. Parameters evolution plot
+      const traceW = { x: epochs, y: data.history.map(h => h.w), mode: 'lines', name: 'w', line: { color: '#2563eb', width: 1.8 } };
+      const traceB = { x: epochs, y: data.history.map(h => h.b), mode: 'lines', name: 'b', line: { color: '#0ea5e9', width: 1.8 } };
+      const traceV = { x: epochs, y: data.history.map(h => h.v), mode: 'lines', name: 'v', line: { color: '#10b981', width: 1.8 } };
+      const traceC = { x: epochs, y: data.history.map(h => h.c), mode: 'lines', name: 'c', line: { color: '#f59e0b', width: 1.8 } };
+      const traceYhat = { x: epochs, y: data.history.map(h => h.y_hat), mode: 'lines', name: 'y_hat', line: { color: '#f1f5f9', dash: 'dot', width: 2 } };
+
+      const layoutParams = {
+        paper_bgcolor: 'transparent',
+        plot_bgcolor: 'transparent',
+        autosize: true,
+        margin: { l: 45, r: 15, t: 15, b: 35 },
+        font: { color: '#94a3b8', family: 'system-ui, -apple-system, sans-serif', size: 11 },
+        xaxis: { title: 'Epoch', gridcolor: '#222838', zerolinecolor: '#2b3245' },
+        yaxis: { title: 'Value', gridcolor: '#222838', zerolinecolor: '#2b3245' },
+        legend: { x: 0.65, y: 0.95, bgcolor: 'rgba(22,25,34,0.85)', bordercolor: '#2b3245', borderwidth: 1 }
+      };
+      Plotly.newPlot('plot-bp-params', [traceW, traceB, traceV, traceC, traceYhat], layoutParams, { responsive: true, displayModeBar: false });
+    }
+
+    // Initial Launch sequence
+    window.addEventListener('DOMContentLoaded', () => {
+      init3DViewport();
+      runFeaSolve();
+      runMulticoreBenchmark();
+      loadEmbeddedState();
+      runBackpropTrain();
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,16 @@
+# System & OS metadata
+desktop.ini
+Thumbs.db
+.DS_Store
+
+# IDE and Editor files
+.vscode/
+.idea/
+*.swp
+*.bak
+
+# Temporary and build artifacts
+*.o
+*.obj
+build/
+cmake-build-*/
